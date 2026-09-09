@@ -4,6 +4,7 @@
 #
 #   wsl-slim.sh                       clean, keeping what the keep-list protects
 #   wsl-slim.sh --compact             then shrink the .vhdx from the Windows side
+#   wsl-slim.sh --compact-only        skip the cleanup, just shrink the .vhdx
 #   wsl-slim.sh --drop-orphan-volumes also delete unused docker volumes (DESTROYS DB DATA)
 #
 # Protect project containers/images from the docker sweep with either:
@@ -14,11 +15,13 @@ set -uo pipefail
 
 DROP_VOLUMES=false
 COMPACT=false
+COMPACT_ONLY=false
 for arg in "$@"; do
     case $arg in
         --drop-orphan-volumes) DROP_VOLUMES=true ;;
         --compact)             COMPACT=true ;;
-        -h|--help)             sed -n '2,11p' "$0" | sed 's/^# \?//'; exit 0 ;;
+        --compact-only)        COMPACT_ONLY=true ;;
+        -h|--help)             sed -n '2,12p' "$0" | sed 's/^# \?//'; exit 0 ;;
         *) printf 'wsl-slim: unknown option %s (try --help)\n' "$arg" >&2; exit 2 ;;
     esac
 done
@@ -37,6 +40,36 @@ keep_pattern() {
 
 section() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 used_gb() { df --output=used -BG / | tail -1 | tr -dc '0-9'; }
+
+# Hands off to the Windows side. Returns only on failure -- on success the
+# elevated script shuts WSL down, which takes this shell with it.
+run_compact() {
+    section "compacting the .vhdx from Windows"
+
+    local ps1
+    ps1="$(dirname "$(readlink -f "$0")")/compact-wsl.ps1"
+    if [[ ! -f $ps1 ]]; then
+        echo "compact-wsl.ps1 not found next to this script -- skipping compaction." >&2
+        return 1
+    fi
+    if ! command -v powershell.exe >/dev/null; then
+        echo "powershell.exe unreachable (WSL interop disabled?) -- run compact-wsl.ps1 on the host." >&2
+        return 1
+    fi
+
+    cat <<'MSG'
+Handing off to Windows. Accept the UAC prompt -- diskpart needs Administrator.
+This shuts WSL down, so THIS SHELL WILL DIE in a moment. That is expected;
+the elevated window keeps running and reports what it reclaimed.
+MSG
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ps1")"
+}
+
+if $COMPACT_ONLY; then
+    run_compact
+    exit $?
+fi
 
 KEEP=$(keep_pattern)
 before=$(used_gb)
@@ -112,22 +145,4 @@ MSG
     exit 0
 fi
 
-section "compacting the .vhdx from Windows"
-
-ps1="$(dirname "$(readlink -f "$0")")/compact-wsl.ps1"
-if [[ ! -f $ps1 ]]; then
-    echo "compact-wsl.ps1 not found next to this script -- skipping compaction." >&2
-    exit 1
-fi
-if ! command -v powershell.exe >/dev/null; then
-    echo "powershell.exe unreachable (WSL interop disabled?) -- run compact-wsl.ps1 on the host." >&2
-    exit 1
-fi
-
-cat <<'MSG'
-Handing off to Windows. Accept the UAC prompt -- diskpart needs Administrator.
-This shuts WSL down, so THIS SHELL WILL DIE in a moment. That is expected;
-the elevated window keeps running and reports what it reclaimed.
-MSG
-
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ps1")"
+run_compact

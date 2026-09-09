@@ -53,8 +53,12 @@ PowerShell one beside it.
 ```bash
 ./wsl-slim.sh                        # clean inside WSL only
 ./wsl-slim.sh --compact              # clean, then shrink the .vhdx  (needs UAC)
+./wsl-slim.sh --compact-only         # skip the cleanup, just shrink the .vhdx
 ./wsl-slim.sh --drop-orphan-volumes  # also delete unused Docker volumes
 ```
+
+`--compact-only` is for the second run: you cleaned yesterday, the disk is still
+fat on the Windows side, and there is nothing left to delete inside.
 
 `--compact` shuts WSL down, so your shell dies mid-run. That is expected: the
 elevated Windows console keeps going and reports what it reclaimed.

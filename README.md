@@ -54,8 +54,15 @@ PowerShell one beside it.
 ./wsl-slim.sh                        # clean inside WSL only
 ./wsl-slim.sh --compact              # clean, then shrink the .vhdx  (needs UAC)
 ./wsl-slim.sh --compact-only         # skip the cleanup, just shrink the .vhdx
+./wsl-slim.sh --compact-only --dry-run   # report only, change nothing
 ./wsl-slim.sh --drop-orphan-volumes  # also delete unused Docker volumes
 ```
+
+`--dry-run` reports what the Windows half would do — which disks it found, whether
+each is sparse, how big they actually are — without shutting WSL down or touching
+anything. It only applies to the `.vhdx` side, so it has to be paired with
+`--compact` or `--compact-only`; the in-WSL cleanup has no report mode and the
+script refuses the combination rather than deleting caches you expected to keep.
 
 `--compact-only` is for the second run: you cleaned yesterday, the disk is still
 fat on the Windows side, and there is nothing left to delete inside.

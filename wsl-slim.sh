@@ -5,6 +5,7 @@
 #   wsl-slim.sh                       clean, keeping what the keep-list protects
 #   wsl-slim.sh --compact             then shrink the .vhdx from the Windows side
 #   wsl-slim.sh --compact-only        skip the cleanup, just shrink the .vhdx
+#   wsl-slim.sh --compact-only --dry-run   report what the .vhdx side would do
 #   wsl-slim.sh --drop-orphan-volumes also delete unused docker volumes (DESTROYS DB DATA)
 #
 # Protect project containers/images from the docker sweep with either:
@@ -16,15 +17,24 @@ set -uo pipefail
 DROP_VOLUMES=false
 COMPACT=false
 COMPACT_ONLY=false
+DRY_RUN=false
 for arg in "$@"; do
     case $arg in
         --drop-orphan-volumes) DROP_VOLUMES=true ;;
         --compact)             COMPACT=true ;;
         --compact-only)        COMPACT_ONLY=true ;;
-        -h|--help)             sed -n '2,12p' "$0" | sed 's/^# \?//'; exit 0 ;;
+        --dry-run)             DRY_RUN=true ;;
+        -h|--help)             sed -n '2,13p' "$0" | sed 's/^# \?//'; exit 0 ;;
         *) printf 'wsl-slim: unknown option %s (try --help)\n' "$arg" >&2; exit 2 ;;
     esac
 done
+
+# --dry-run only reaches the Windows half; the in-WSL cleanup has no report mode
+# and deletes for real. Refusing here beats deleting caches someone expected to keep.
+if $DRY_RUN && ! $COMPACT && ! $COMPACT_ONLY; then
+    echo "wsl-slim: --dry-run needs --compact or --compact-only (it only reports what the .vhdx side would do)" >&2
+    exit 2
+fi
 
 KEEP_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/wsl-slim.keep"
 keep_pattern() {
@@ -55,6 +65,12 @@ run_compact() {
     if ! command -v powershell.exe >/dev/null; then
         echo "powershell.exe unreachable (WSL interop disabled?) -- run compact-wsl.ps1 on the host." >&2
         return 1
+    fi
+
+    if $DRY_RUN; then
+        echo "Dry run: reporting only. WSL stays up and no disk is modified."
+        powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ps1")" -WhatIf
+        return $?
     fi
 
     cat <<'MSG'

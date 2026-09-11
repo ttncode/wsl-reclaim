@@ -63,6 +63,21 @@ function Test-Sparse {
     (fsutil sparse queryflag "$File" 2>&1) -match 'is set as sparse'
 }
 
+function Get-DockerDisk {
+    # Docker Desktop keeps its disk outside Lxss, so Get-DistroDisk never sees it.
+    # Path moved between versions; both layouts are still in the wild.
+    $candidates = @(
+        (Join-Path $env:LOCALAPPDATA 'Docker\wsl\disk\docker_data.vhdx'),
+        (Join-Path $env:LOCALAPPDATA 'Docker\wsl\data\ext4.vhdx')
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path -LiteralPath $path) {
+            [pscustomobject]@{ Name = 'docker-desktop'; Vhdx = $path }
+        }
+    }
+}
+
 function Get-DistroDisk {
     $lxss = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss'
     if (-not (Test-Path $lxss)) { return @() }
@@ -118,7 +133,7 @@ $disks = if ($Path) {
     if (-not (Test-Path -LiteralPath $Path)) { throw "No such file: $Path" }
     @([pscustomobject]@{ Name = (Split-Path $Path -Leaf); Vhdx = (Resolve-Path $Path).Path })
 } else {
-    @(Get-DistroDisk)
+    @(Get-DistroDisk) + @(Get-DockerDisk)
 }
 
 if (-not $disks) {

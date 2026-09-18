@@ -137,7 +137,7 @@ $disks = if ($Path) {
 }
 
 if (-not $disks) {
-    Write-Host 'No WSL distro disks found under Lxss. Pass -Path to target one directly.' -ForegroundColor Yellow
+    Write-Host 'No WSL or Docker Desktop disks found. Pass -Path to target one directly.' -ForegroundColor Yellow
     return
 }
 

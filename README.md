@@ -106,6 +106,20 @@ Check which case you're in:
 fsutil sparse queryflag "C:\Users\you\AppData\Local\wsl\{guid}\ext4.vhdx"
 ```
 
+## Which disks it finds
+
+Distros registered under the `Lxss` registry key, plus Docker Desktop's own disk —
+which lives outside `Lxss` at `%LOCALAPPDATA%\Docker\wsl\`, and is usually the
+biggest one on the machine because every image layer you ever pulled is in it.
+Both layouts Docker has shipped are checked, and it is skipped silently when
+Docker Desktop is not installed.
+
+Anything not discovered automatically can be targeted directly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File compact-wsl.ps1 -Path D:\some\disk.vhdx
+```
+
 ## What it cleans inside WSL
 
 Docker containers, images and build cache · npm, pnpm, yarn, pip, composer and Go
@@ -138,9 +152,9 @@ and that is where your local database data lives.
 Compaction needs Administrator — diskpart does, there is no way around it. The
 script re-launches itself elevated and you'll get a UAC prompt.
 
-Disk discovery reads distro paths from `HKCU:\...\Lxss`. Anything not registered
-there (some container runtimes keep their own disk elsewhere) won't be found
-automatically; pass `-Path` to point at it directly.
+Docker Desktop's path is hardcoded to the two layouts it has shipped. A container
+runtime that keeps its disk somewhere else won't be found automatically; pass
+`-Path` to point at it directly.
 
 Written against WSL 2.7.x with Ubuntu. Disk discovery, sparse detection and the
 allocated-size reporting are verified there; the sparse branch itself is based on

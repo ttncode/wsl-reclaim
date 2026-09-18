@@ -135,6 +135,8 @@ for d in ~/.vscode-server/bin ~/.cursor-server/bin \
          ~/.antigravity-server/bin ~/.antigravity-ide-server/bin \
          ~/.windsurf-server/bin; do
     [[ -d $d ]] || continue
+    # shellcheck disable=SC2012  # find cannot sort by mtime portably, and these
+    # names are build hashes -- no spaces to mishandle.
     ls -1t "$d" | tail -n +2 | while read -r old; do rm -rf "${d:?}/$old"; done
 done
 
@@ -147,7 +149,11 @@ printf '\n\033[1mFreed inside WSL: %sG  (%sG -> %sG used)\033[0m\n' \
     "$((before - after))" "$before" "$after"
 
 section "nvm node versions -- prune manually"
-ls -1 ~/.nvm/versions/node 2>/dev/null | sed 's/^/  /'
+for v in ~/.nvm/versions/node/*/; do
+    [[ -d $v ]] || continue
+    v=${v%/}
+    printf '  %s\n' "${v##*/}"
+done
 echo "  remove unused with: nvm uninstall <version>"
 
 if ! $COMPACT; then

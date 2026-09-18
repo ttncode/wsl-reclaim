@@ -117,6 +117,10 @@ function Invoke-Compact {
 
 # --- main ---------------------------------------------------------------
 
+# Dot-sourcing loads the functions for tests. Without this the elevation branch
+# below fires and spawns a UAC prompt just for importing them.
+if ($MyInvocation.InvocationName -eq '.') { return }
+
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
            ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 

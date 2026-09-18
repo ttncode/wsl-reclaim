@@ -19,5 +19,5 @@ jobs:
       - shell: pwsh
         run: |
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
-          $findings = Invoke-ScriptAnalyzer -Path compact-wsl.ps1 -Severity Error,Warning
+          $findings = Invoke-ScriptAnalyzer -Path compact-wsl.ps1 -Settings PSScriptAnalyzerSettings.psd1 -Severity Error,Warning
           if ($findings) { $findings | Format-Table -AutoSize | Out-String | Write-Host; exit 1 }
